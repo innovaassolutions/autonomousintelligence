@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { parseJsonResponse } from "../lib/parse-json.js";
 import type { PipelineState, Section } from "../pipeline/state.js";
 
 export async function writingAgent(state: typeof PipelineState.State) {
@@ -47,7 +48,7 @@ Return: { "name": "${sectionName}", "headline": "<headline>", "body": "<2-4 para
 
     try {
       sections.push(
-        JSON.parse((response.content[0] as { type: "text"; text: string }).text)
+        parseJsonResponse<Section>((response.content[0] as { type: "text"; text: string }).text)
       );
     } catch {
       // Skip malformed section — don't abort the run
@@ -73,7 +74,7 @@ Return: { "name": "${sectionName}", "headline": "<headline>", "body": "<2-4 para
   let subject = "";
   let preview = "";
   try {
-    const parsed = JSON.parse(
+    const parsed = parseJsonResponse<{ subject: string; preview: string }>(
       (subjectResponse.content[0] as { type: "text"; text: string }).text
     );
     subject = parsed.subject;

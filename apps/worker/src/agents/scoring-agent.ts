@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import { parseJsonResponse } from "../lib/parse-json.js";
 import type { PipelineState, ScoredArticle } from "../pipeline/state.js";
 
 export async function scoringAgent(state: typeof PipelineState.State) {
@@ -35,9 +36,12 @@ Return: { "relevance_score": <0-100>, "topic_category": "<category>", "recommend
         ],
       });
 
-      const scored = JSON.parse(
-        (response.content[0] as { type: "text"; text: string }).text
-      );
+      const scored = parseJsonResponse<{
+        relevance_score: number;
+        topic_category: string;
+        recommended_section: string;
+        reason: string;
+      }>((response.content[0] as { type: "text"; text: string }).text);
       const status = scored.relevance_score >= instance.min_score ? "scored" : "discarded";
 
       await supabase

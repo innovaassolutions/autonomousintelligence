@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { parseJsonResponse } from "../lib/parse-json.js";
 import type { PipelineState } from "../pipeline/state.js";
 
 export async function editorialAgent(state: typeof PipelineState.State) {
@@ -33,7 +34,7 @@ Return: { "approved": <true|false>, "feedback": "<specific issues to fix, or nul
   let feedback: string | null = null;
 
   try {
-    const review = JSON.parse(
+    const review = parseJsonResponse<{ approved: boolean; feedback: string | null; quality_score: number }>(
       (response.content[0] as { type: "text"; text: string }).text
     );
     approved = review.approved;

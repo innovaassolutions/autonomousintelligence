@@ -29,6 +29,8 @@
   "devDependencies": {
     "@types/node": "^20",
     "@types/uuid": "^9",
+    "dotenv": "^17.4.2",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
