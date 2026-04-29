@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# Build outputs
+dist/
+.next/
+out/
+
+# Trigger.dev
+.trigger/
+
+# OS / editor
+.DS_Store
+.vscode/
+*.log

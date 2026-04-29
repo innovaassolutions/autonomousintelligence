@@ -1,0 +1,17 @@
+{
+  "name": "autonomousintelligence",
+  "private": true,
+  "scripts": {
+    "dev:worker": "pnpm --filter worker dev",
+    "dev:web": "pnpm --filter web dev",
+    "build:worker": "pnpm --filter worker build",
+    "build:web": "pnpm --filter web build"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  }
+}
