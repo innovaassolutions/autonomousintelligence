@@ -7,7 +7,7 @@ export async function POST(
 ) {
   const { id } = await params;
   const supabase = createClient(
-    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_KEY!
   );
 
@@ -17,7 +17,6 @@ export async function POST(
     return NextResponse.json({ error: "Invalid decision" }, { status: 400 });
   }
 
-  // Load the edition and its associated pipeline run
   const { data: edition, error } = await supabase
     .from("newsletter_editions")
     .select("id, pipeline_runs(langgraph_thread_id)")
@@ -28,7 +27,6 @@ export async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Update approval state
   await supabase
     .from("newsletter_editions")
     .update({
@@ -39,22 +37,20 @@ export async function POST(
     })
     .eq("id", id);
 
+  // If approved, notify the Railway worker to resume the LangGraph graph.
+  // The worker exposes a /resume endpoint that calls graph.invoke() with
+  // the stored thread_id. Set WORKER_RESUME_URL in Vercel env vars once
+  // Railway is deployed.
   if (decision === "approved") {
-    // Dynamically import to keep Railway worker code out of Vercel bundle
-    const { PostgresSaver } = await import("@langchain/langgraph-checkpoint-postgres");
-    const { buildPipelineGraph } = await import("../../../../../worker/pipeline/graph");
-
-    const checkpointer = PostgresSaver.fromConnString(
-      process.env.SUPABASE_CONNECTION_STRING!
-    );
-    const graph = buildPipelineGraph(checkpointer);
+    const workerUrl = process.env.WORKER_RESUME_URL;
     const threadId = (edition as any).pipeline_runs?.langgraph_thread_id;
 
-    if (threadId) {
-      // Resume the paused LangGraph graph — continues past the approval_gate node
-      graph
-        .invoke({ approvalStatus: "approved" }, { configurable: { thread_id: threadId } })
-        .catch(console.error);
+    if (workerUrl && threadId) {
+      await fetch(`${workerUrl}/resume`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ threadId }),
+      }).catch(console.error);
     }
   }
 
