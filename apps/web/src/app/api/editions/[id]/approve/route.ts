@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { tasks } from "@trigger.dev/sdk/v3";
 
 export async function POST(
   req: NextRequest,
@@ -37,20 +38,12 @@ export async function POST(
     })
     .eq("id", id);
 
-  // If approved, notify the Railway worker to resume the LangGraph graph.
-  // The worker exposes a /resume endpoint that calls graph.invoke() with
-  // the stored thread_id. Set WORKER_RESUME_URL in Vercel env vars once
-  // Railway is deployed.
   if (decision === "approved") {
-    const workerUrl = process.env.WORKER_RESUME_URL;
     const threadId = (edition as any).pipeline_runs?.langgraph_thread_id;
 
-    if (workerUrl && threadId) {
-      await fetch(`${workerUrl}/resume`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ threadId }),
-      }).catch(console.error);
+    if (threadId) {
+      // Trigger the resume task on the Trigger.dev worker
+      await tasks.trigger("resume-pipeline", { threadId });
     }
   }
 
