@@ -37,11 +37,16 @@ export const scheduleInstances = schedules.task({
       });
 
       // Advance next_run_at using croner
-      const cron = new Cron(instance.cron_schedule, { timezone: instance.timezone });
-      await supabase
-        .from("newsletter_instances")
-        .update({ next_run_at: cron.nextRun()?.toISOString() })
-        .eq("id", instance.id);
+      try {
+        const cron = new Cron(instance.cron_schedule, { timezone: instance.timezone });
+        await supabase
+          .from("newsletter_instances")
+          .update({ next_run_at: cron.nextRun()?.toISOString() })
+          .eq("id", instance.id);
+      } catch (err) {
+        console.error(`Invalid cron_schedule for instance ${instance.id} ("${instance.cron_schedule}"): ${err}`);
+        continue;
+      }
 
       // Build and invoke the LangGraph pipeline (fire and forget — state persisted via checkpointer)
       const checkpointer = PostgresSaver.fromConnString(
