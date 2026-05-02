@@ -27,6 +27,7 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
+    "@trigger.dev/cli": "^3.3.12",
     "@types/node": "^20",
     "@types/uuid": "^9",
     "dotenv": "^17.4.2",
