@@ -13,13 +13,9 @@ interface NewsletterInstance {
   cron_schedule: string;
   timezone: string;
   is_active: boolean;
-  sources: Array<{ type: "rss" | "scrape" | "tavily"; url?: string; query?: string; label: string }>;
   voice_prompt: string;
   newsletter_name: string;
-  section_structure: string[];
-  topic_weights: Record<string, number>;
-  min_score: number;
-  min_articles: number;
+  editorial_focus: string | null;
   max_rewrite_loops: number;
   beehiiv_account_id: string | null;
   beehiiv_pub_id: string | null;
@@ -35,15 +31,10 @@ interface BeehiivAccount {
   name: string;
 }
 
-type Source = { type: "rss" | "scrape" | "tavily"; url: string; query: string; label: string };
-type TopicWeightRow = { key: string; value: number };
-
 const TABS = [
   "Basic Info",
   "Schedule",
-  "Sources",
   "Voice & Editorial",
-  "Scoring",
   "Delivery",
   "Approval",
 ] as const;
@@ -142,30 +133,11 @@ export function InstanceForm({
   const [timezone, setTimezone] = useState(defaultValues?.timezone ?? "Asia/Singapore");
   const [sendHour, setSendHour] = useState(defaultValues?.send_hour ?? 7);
 
-  // Sources
-  const [sources, setSources] = useState<Source[]>(
-    (defaultValues?.sources ?? []).map((s) => ({
-      type: s.type,
-      url: s.url ?? "",
-      query: s.query ?? "",
-      label: s.label,
-    }))
-  );
-
   // Voice & Editorial
   const [newsletterName, setNewsletterName] = useState(defaultValues?.newsletter_name ?? "");
   const [voicePrompt, setVoicePrompt] = useState(defaultValues?.voice_prompt ?? "");
-  const [sectionStructure, setSectionStructure] = useState<string[]>(
-    defaultValues?.section_structure ?? []
-  );
+  const [editorialFocus, setEditorialFocus] = useState(defaultValues?.editorial_focus ?? "");
   const [maxRewriteLoops, setMaxRewriteLoops] = useState(defaultValues?.max_rewrite_loops ?? 2);
-
-  // Scoring
-  const [minScore, setMinScore] = useState(defaultValues?.min_score ?? 40);
-  const [minArticles, setMinArticles] = useState(defaultValues?.min_articles ?? 6);
-  const [topicWeights, setTopicWeights] = useState<TopicWeightRow[]>(
-    Object.entries(defaultValues?.topic_weights ?? {}).map(([key, value]) => ({ key, value }))
-  );
 
   // Delivery
   const [beehiivAccountId, setBeehiivAccountId] = useState(defaultValues?.beehiiv_account_id ?? "");
@@ -177,48 +149,10 @@ export function InstanceForm({
   const [approverEmail, setApproverEmail] = useState(defaultValues?.approver_email ?? "");
   const [linkedProduct, setLinkedProduct] = useState(defaultValues?.linked_product ?? "");
 
-  // Sources helpers
-  function addSource() {
-    setSources((prev) => [...prev, { type: "rss", url: "", query: "", label: "" }]);
-  }
-  function removeSource(i: number) {
-    setSources((prev) => prev.filter((_, idx) => idx !== i));
-  }
-  function updateSource(i: number, patch: Partial<Source>) {
-    setSources((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
-  }
-
-  // Section structure helpers
-  function addSection() {
-    setSectionStructure((prev) => [...prev, ""]);
-  }
-  function removeSection(i: number) {
-    setSectionStructure((prev) => prev.filter((_, idx) => idx !== i));
-  }
-  function updateSection(i: number, val: string) {
-    setSectionStructure((prev) => prev.map((s, idx) => (idx === i ? val : s)));
-  }
-
-  // Topic weights helpers
-  function addTopicWeight() {
-    setTopicWeights((prev) => [...prev, { key: "", value: 50 }]);
-  }
-  function removeTopicWeight(i: number) {
-    setTopicWeights((prev) => prev.filter((_, idx) => idx !== i));
-  }
-  function updateTopicWeight(i: number, patch: Partial<TopicWeightRow>) {
-    setTopicWeights((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-
-    const topicWeightsObj: Record<string, number> = {};
-    for (const { key, value } of topicWeights) {
-      if (key.trim()) topicWeightsObj[key.trim()] = value;
-    }
 
     const payload = {
       name,
@@ -230,18 +164,10 @@ export function InstanceForm({
       cron_schedule: cronSchedule,
       timezone,
       send_hour: sendHour,
-      sources: sources.map((s) => ({
-        type: s.type,
-        label: s.label,
-        ...(s.type === "tavily" ? { query: s.query } : { url: s.url }),
-      })),
       newsletter_name: newsletterName,
       voice_prompt: voicePrompt,
-      section_structure: sectionStructure.filter((s) => s.trim() !== ""),
+      editorial_focus: editorialFocus || null,
       max_rewrite_loops: maxRewriteLoops,
-      min_score: minScore,
-      min_articles: minArticles,
-      topic_weights: topicWeightsObj,
       beehiiv_account_id: beehiivAccountId || null,
       beehiiv_pub_id: beehiivPubId || null,
       subject_template: subjectTemplate || null,
@@ -401,68 +327,6 @@ export function InstanceForm({
           </div>
         )}
 
-        {/* Sources */}
-        {activeTab === "Sources" && (
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 mb-5">Sources</h2>
-            <div className="space-y-4">
-              {sources.map((source, i) => (
-                <div key={i} className="rounded-md border border-gray-200 p-4 bg-gray-50">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div>
-                        <Label>Type</Label>
-                        <Select
-                          value={source.type}
-                          onChange={(e) =>
-                            updateSource(i, { type: e.target.value as Source["type"] })
-                          }
-                        >
-                          <option value="rss">RSS</option>
-                          <option value="scrape">Scrape</option>
-                          <option value="tavily">Tavily</option>
-                        </Select>
-                      </div>
-                      <div className="flex-1">
-                        <Label required>Label</Label>
-                        <Input
-                          value={source.label}
-                          onChange={(e) => updateSource(i, { label: e.target.value })}
-                          placeholder="e.g. Industry RSS"
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="pt-6">
-                      <RemoveButton onClick={() => removeSource(i)} />
-                    </div>
-                  </div>
-                  {source.type !== "tavily" ? (
-                    <div>
-                      <Label>URL</Label>
-                      <Input
-                        value={source.url}
-                        onChange={(e) => updateSource(i, { url: e.target.value })}
-                        placeholder="https://example.com/feed.xml"
-                      />
-                    </div>
-                  ) : (
-                    <div>
-                      <Label>Query</Label>
-                      <Input
-                        value={source.query}
-                        onChange={(e) => updateSource(i, { query: e.target.value })}
-                        placeholder="manufacturing automation news"
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <AddButton onClick={addSource} label="Add source" />
-          </div>
-        )}
-
         {/* Voice & Editorial */}
         {activeTab === "Voice & Editorial" && (
           <div>
@@ -492,79 +356,22 @@ export function InstanceForm({
               <Textarea
                 value={voicePrompt}
                 onChange={(e) => setVoicePrompt(e.target.value)}
-                rows={12}
+                rows={10}
                 required
-                placeholder="Full Claude system prompt defining the newsletter's voice, tone, and style..."
+                placeholder="Describe the newsletter's voice, tone, and style. Claude uses this when writing every section."
               />
             </FieldGroup>
             <FieldGroup>
-              <Label>Section Structure</Label>
-              <div className="space-y-2">
-                {sectionStructure.map((section, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <Input
-                      value={section}
-                      onChange={(e) => updateSection(i, e.target.value)}
-                      placeholder="e.g. Regulatory &amp; Compliance"
-                    />
-                    <RemoveButton onClick={() => removeSection(i)} />
-                  </div>
-                ))}
-              </div>
-              <AddButton onClick={addSection} label="Add section" />
-            </FieldGroup>
-          </div>
-        )}
-
-        {/* Scoring */}
-        {activeTab === "Scoring" && (
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 mb-5">Scoring</h2>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-              <FieldGroup>
-                <Label>Min Score (0–100)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={minScore}
-                  onChange={(e) => setMinScore(Number(e.target.value))}
-                />
-              </FieldGroup>
-              <FieldGroup>
-                <Label>Min Articles</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={minArticles}
-                  onChange={(e) => setMinArticles(Number(e.target.value))}
-                />
-              </FieldGroup>
-            </div>
-            <FieldGroup>
-              <Label>Topic Weights</Label>
-              <div className="space-y-2">
-                {topicWeights.map((row, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <Input
-                      value={row.key}
-                      onChange={(e) => updateTopicWeight(i, { key: e.target.value })}
-                      placeholder="Topic name"
-                      className="flex-1"
-                    />
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={row.value}
-                      onChange={(e) => updateTopicWeight(i, { value: Number(e.target.value) })}
-                      className="w-24"
-                    />
-                    <RemoveButton onClick={() => removeTopicWeight(i)} />
-                  </div>
-                ))}
-              </div>
-              <AddButton onClick={addTopicWeight} label="Add topic weight" />
+              <Label>Editorial Focus</Label>
+              <Textarea
+                value={editorialFocus}
+                onChange={(e) => setEditorialFocus(e.target.value)}
+                rows={3}
+                placeholder="Optional high-level editorial guidance, e.g. 'Emphasise regulatory and automation topics. Avoid vendor marketing pieces.'"
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                The research agent autonomously discovers and selects topics each run. Use this field to steer emphasis, not to prescribe specific sources or sections.
+              </p>
             </FieldGroup>
           </div>
         )}

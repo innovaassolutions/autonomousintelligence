@@ -37,14 +37,10 @@ create table newsletter_instances (
   next_run_at       timestamptz,
   is_active         boolean not null default true,
 
-  sources           jsonb not null default '[]',
   voice_prompt      text not null,
   newsletter_name   text not null,
-  section_structure jsonb not null default '[]',
+  editorial_focus   text,
 
-  topic_weights     jsonb not null default '{}',
-  min_score         int not null default 40,
-  min_articles      int not null default 6,
   max_rewrite_loops int not null default 2,
 
   beehiiv_account_id uuid references beehiiv_accounts(id) on delete set null,

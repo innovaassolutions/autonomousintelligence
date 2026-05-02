@@ -13,13 +13,9 @@ export interface NewsletterInstance {
   timezone: string;
   next_run_at: string | null;
   is_active: boolean;
-  sources: Source[];
   voice_prompt: string;
   newsletter_name: string;
-  section_structure: string[];
-  topic_weights: Record<string, number>;
-  min_score: number;
-  min_articles: number;
+  editorial_focus: string | null;
   max_rewrite_loops: number;
   beehiiv_account_id: string | null;
   beehiiv_pub_id: string | null;
@@ -28,13 +24,6 @@ export interface NewsletterInstance {
   require_approval: boolean;
   approver_email: string | null;
   linked_product: string | null;
-}
-
-export interface Source {
-  type: "rss" | "scrape" | "tavily";
-  url?: string;
-  query?: string;
-  label: string;
 }
 
 export interface RawArticle {
@@ -50,12 +39,20 @@ export interface Article extends RawArticle {
   embedding?: number[];
 }
 
-export interface ScoredArticle extends Article {
-  relevance_score: number;
-  topic_category: string;
-  recommended_section: string;
-  reason: string;
-  status: "scored";
+export interface CuratedTheme {
+  id: string;
+  title: string;
+  angle: string;
+  section_name: string;
+  deep_dive_query: string;
+  supporting_articles: Array<{
+    id: string;
+    title: string;
+    url: string;
+    markdown: string;
+    sourceLabel: string;
+    sourceType: string;
+  }>;
 }
 
 export interface Section {
@@ -110,7 +107,7 @@ export const PipelineState = Annotation.Root({
     value: (_, next) => next,
     default: () => [],
   }),
-  scoredArticles: Annotation<ScoredArticle[]>({
+  curatedThemes: Annotation<CuratedTheme[]>({
     value: (_, next) => next,
     default: () => [],
   }),

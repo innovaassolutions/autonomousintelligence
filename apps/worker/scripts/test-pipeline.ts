@@ -19,33 +19,20 @@ async function main() {
   const testInstance: Omit<NewsletterInstance, "id"> = {
     name: "Manufacturing Ops Weekly",
     slug: "manufacturing-ops",
-    vertical: "manufacturing",
+    vertical: "manufacturing operations",
     description: "Weekly intelligence for manufacturing operations leaders",
     target_audience: "Operations managers and plant directors in discrete manufacturing",
     cron_schedule: "0 7 * * 1",
     timezone: "Asia/Singapore",
     next_run_at: null,
     is_active: true,
-    sources: [
-      { type: "tavily", query: "manufacturing operations automation 2025", label: "Manufacturing Automation News" },
-      { type: "tavily", query: "industrial IoT factory efficiency", label: "Industrial IoT" },
-      { type: "tavily", query: "supply chain disruption manufacturing", label: "Supply Chain" },
-    ],
     voice_prompt: `You write for senior manufacturing operations leaders — plant directors, VP Ops, and COOs at mid-to-large discrete manufacturers.
 Your tone is direct, data-driven, and practical. No fluff. Lead with the operational impact.
 Avoid jargon unless it's industry-standard. Assume the reader manages complex production environments and cares about uptime, throughput, cost-per-unit, and regulatory compliance.`,
     newsletter_name: "Manufacturing Ops Weekly",
-    section_structure: ["Regulatory & Compliance", "Technology & Automation", "Supply Chain", "Workforce & Safety"],
-    topic_weights: {
-      "regulatory": 85,
-      "automation": 80,
-      "supply chain": 75,
-      "workforce": 65,
-      "technology": 70,
-    },
-    min_score: 40,
-    min_articles: 4,
+    editorial_focus: null,
     max_rewrite_loops: 1,
+    beehiiv_account_id: null,
     beehiiv_pub_id: null,
     send_hour: 7,
     subject_template: null,
@@ -64,7 +51,11 @@ Avoid jargon unless it's industry-standard. Assume the reader manages complex pr
 
   if (existing) {
     instanceId = existing.id;
-    console.log(`✓ Using existing instance: ${instanceId}`);
+    await supabase
+      .from("newsletter_instances")
+      .update(testInstance)
+      .eq("id", instanceId);
+    console.log(`✓ Updated existing instance: ${instanceId}`);
   } else {
     const { data: inserted, error } = await supabase
       .from("newsletter_instances")
@@ -98,7 +89,7 @@ Avoid jargon unless it's industry-standard. Assume the reader manages complex pr
   console.log(`✓ Created pipeline run: ${runId}`);
   console.log(`  Thread ID: ${threadId}`);
 
-  // ── 3. Build and invoke the LangGraph pipeline ────────────────────────────
+  // ── 4. Build and invoke the LangGraph pipeline ────────────────────────────
   console.log("\nStarting pipeline...\n");
 
   const checkpointer = PostgresSaver.fromConnString(process.env.SUPABASE_CONNECTION_STRING!);
@@ -111,12 +102,12 @@ Avoid jargon unless it's industry-standard. Assume the reader manages complex pr
     { configurable: { thread_id: threadId } }
   );
 
-  // ── 4. Report results ─────────────────────────────────────────────────────
+  // ── 5. Report results ─────────────────────────────────────────────────────
   console.log("\n── Pipeline result ──────────────────────────────────────────");
   console.log(`Status:          ${result.status}`);
   console.log(`Raw articles:    ${result.rawArticles?.length ?? 0}`);
   console.log(`Deduplicated:    ${result.deduplicatedArticles?.length ?? 0}`);
-  console.log(`Scored:          ${result.scoredArticles?.length ?? 0}`);
+  console.log(`Curated themes:  ${result.curatedThemes?.length ?? 0}`);
   console.log(`Sections:        ${result.sections?.length ?? 0}`);
   console.log(`Subject:         ${result.subjectLine ?? "(none)"}`);
 
@@ -127,6 +118,15 @@ Avoid jargon unless it's industry-standard. Assume the reader manages complex pr
   if (result.status === "awaiting_approval") {
     console.log("\n✓ Pipeline paused at approval gate — edition is ready for review.");
     console.log("  Check Supabase newsletter_editions table for the draft.");
+  }
+
+  if (result.curatedThemes?.length > 0) {
+    console.log("\n── Curated themes ───────────────────────────────────────────");
+    for (const theme of result.curatedThemes) {
+      console.log(`\n[${theme.section_name}] ${theme.title}`);
+      console.log(`  Angle: ${theme.angle}`);
+      console.log(`  Articles: ${theme.supporting_articles.length}`);
+    }
   }
 
   if (result.sections?.length > 0) {
