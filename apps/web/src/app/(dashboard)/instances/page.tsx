@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createServerClient } from "@/lib/supabase";
 
 export const revalidate = 0;
@@ -12,9 +13,18 @@ export default async function InstancesPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Instances</h1>
-        <p className="text-gray-500 text-sm mt-1">Configured newsletter verticals.</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Instances</h1>
+          <p className="text-gray-500 text-sm mt-1">Configured newsletter verticals.</p>
+        </div>
+        <Link
+          href="/instances/new"
+          className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 transition-colors"
+        >
+          <span className="text-base leading-none">+</span>
+          Add instance
+        </Link>
       </div>
 
       {!instances?.length ? (
@@ -42,10 +52,18 @@ export default async function InstancesPage() {
                     {instance.vertical} · {instance.cron_schedule} · {instance.timezone}
                   </p>
                 </div>
-                <div className="text-right text-xs text-gray-400">
-                  {instance.next_run_at
-                    ? <>Next run: {new Date(instance.next_run_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</>
-                    : "Not scheduled"}
+                <div className="flex items-center gap-4">
+                  <div className="text-right text-xs text-gray-400">
+                    {instance.next_run_at
+                      ? <>Next run: {new Date(instance.next_run_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</>
+                      : "Not scheduled"}
+                  </div>
+                  <Link
+                    href={`/instances/${instance.id}/edit`}
+                    className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+                  >
+                    Edit
+                  </Link>
                 </div>
               </div>
             </div>
