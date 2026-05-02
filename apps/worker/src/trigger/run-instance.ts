@@ -10,6 +10,8 @@ export const runInstance = task({
   run: async (payload: { instanceId: string }) => {
     const { instanceId } = payload;
 
+    console.log(`[run-instance] Starting for instance: ${instanceId}`);
+
     const supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_KEY!
@@ -22,13 +24,15 @@ export const runInstance = task({
       .single();
 
     if (error || !instance) {
-      throw new Error(`Instance not found: ${instanceId}`);
+      throw new Error(`Instance not found: ${instanceId} — ${error?.message}`);
     }
+
+    console.log(`[run-instance] Loaded instance: ${instance.name}`);
 
     const runId = uuidv4();
     const threadId = `pipeline-${instanceId}-${runId}`;
 
-    await supabase.from("pipeline_runs").insert({
+    const { error: runError } = await supabase.from("pipeline_runs").insert({
       id: runId,
       instance_id: instanceId,
       status: "started",
@@ -36,16 +40,37 @@ export const runInstance = task({
       langgraph_thread_id: threadId,
     });
 
-    const checkpointer = PostgresSaver.fromConnString(
-      process.env.SUPABASE_CONNECTION_STRING!
-    );
+    if (runError) throw new Error(`Failed to create pipeline_run: ${runError.message}`);
+
+    console.log(`[run-instance] Created pipeline run: ${runId}`);
+
+    let checkpointer: PostgresSaver;
+    try {
+      checkpointer = PostgresSaver.fromConnString(process.env.SUPABASE_CONNECTION_STRING!);
+      await checkpointer.setup();
+      console.log(`[run-instance] Checkpointer ready`);
+    } catch (err) {
+      throw new Error(`Checkpointer setup failed: ${err}`);
+    }
+
     const graph = buildPipelineGraph(checkpointer);
 
-    const result = await graph.invoke(
-      { instanceId, runId, instance },
-      { configurable: { thread_id: threadId } }
-    );
+    console.log(`[run-instance] Invoking graph...`);
 
-    return { status: result.status, runId };
+    try {
+      const result = await graph.invoke(
+        { instanceId, runId, instance },
+        { configurable: { thread_id: threadId } }
+      );
+      console.log(`[run-instance] Graph completed with status: ${result.status}`);
+      return { status: result.status, runId };
+    } catch (err) {
+      console.error(`[run-instance] Graph failed:`, err);
+      await supabase
+        .from("pipeline_runs")
+        .update({ status: "failed", abort_reason: String(err) })
+        .eq("id", runId);
+      throw err;
+    }
   },
 });
