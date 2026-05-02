@@ -10,6 +10,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link href="/editions" className="hover:text-white transition-colors">Editions</Link>
             <Link href="/instances" className="hover:text-white transition-colors">Instances</Link>
             <Link href="/analytics" className="hover:text-white transition-colors">Analytics</Link>
+            <Link href="/settings/beehiiv" className="hover:text-white transition-colors">Settings</Link>
           </div>
         </div>
       </nav>

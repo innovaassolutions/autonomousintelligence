@@ -15,13 +15,24 @@ export async function deliveryAgent(state: typeof PipelineState.State) {
     .eq("id", runId)
     .single();
 
+  // Fetch the Beehiiv API key from Supabase Vault via the account FK
+  if (!instance.beehiiv_account_id) {
+    throw new Error("No Beehiiv account linked to this instance");
+  }
+  const { data: apiKey, error: keyError } = await supabase.rpc("get_beehiiv_api_key", {
+    p_account_id: instance.beehiiv_account_id,
+  });
+  if (keyError || !apiKey) {
+    throw new Error(`Failed to retrieve Beehiiv API key: ${keyError?.message ?? "not found"}`);
+  }
+
   // Create Beehiiv draft
   const beehiivRes = await fetch(
     `https://api.beehiiv.com/v2/publications/${instance.beehiiv_pub_id}/posts`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${instance.beehiiv_api_key}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -51,7 +62,7 @@ export async function deliveryAgent(state: typeof PipelineState.State) {
     {
       method: "PATCH",
       headers: {
-        Authorization: `Bearer ${instance.beehiiv_api_key}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ status: "confirmed", scheduled_at: sendAt.toISOString() }),

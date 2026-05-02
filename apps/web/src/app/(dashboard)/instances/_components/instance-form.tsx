@@ -21,13 +21,18 @@ interface NewsletterInstance {
   min_score: number;
   min_articles: number;
   max_rewrite_loops: number;
-  beehiiv_api_key: string | null;
+  beehiiv_account_id: string | null;
   beehiiv_pub_id: string | null;
   send_hour: number;
   subject_template: string | null;
   require_approval: boolean;
   approver_email: string | null;
   linked_product: string | null;
+}
+
+interface BeehiivAccount {
+  id: string;
+  name: string;
 }
 
 type Source = { type: "rss" | "scrape" | "tavily"; url: string; query: string; label: string };
@@ -113,9 +118,11 @@ function RemoveButton({ onClick }: { onClick: () => void }) {
 export function InstanceForm({
   defaultValues,
   instanceId,
+  beehiivAccounts = [],
 }: {
   defaultValues?: Partial<NewsletterInstance>;
   instanceId?: string;
+  beehiivAccounts?: BeehiivAccount[];
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("Basic Info");
@@ -161,7 +168,7 @@ export function InstanceForm({
   );
 
   // Delivery
-  const [beehiivApiKey, setBeehiivApiKey] = useState(defaultValues?.beehiiv_api_key ?? "");
+  const [beehiivAccountId, setBeehiivAccountId] = useState(defaultValues?.beehiiv_account_id ?? "");
   const [beehiivPubId, setBeehiivPubId] = useState(defaultValues?.beehiiv_pub_id ?? "");
   const [subjectTemplate, setSubjectTemplate] = useState(defaultValues?.subject_template ?? "");
 
@@ -235,7 +242,7 @@ export function InstanceForm({
       min_score: minScore,
       min_articles: minArticles,
       topic_weights: topicWeightsObj,
-      beehiiv_api_key: beehiivApiKey || null,
+      beehiiv_account_id: beehiivAccountId || null,
       beehiiv_pub_id: beehiivPubId || null,
       subject_template: subjectTemplate || null,
       require_approval: requireApproval,
@@ -568,17 +575,26 @@ export function InstanceForm({
             <h2 className="text-base font-semibold text-gray-900 mb-5">Delivery (Beehiiv)</h2>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <FieldGroup>
-                <Label>Beehiiv API Key</Label>
-                <Input
-                  type="password"
-                  value={beehiivApiKey}
-                  onChange={(e) => setBeehiivApiKey(e.target.value)}
-                  placeholder="••••••••••••"
-                  autoComplete="off"
-                />
+                <Label required>Beehiiv Account</Label>
+                <Select
+                  value={beehiivAccountId}
+                  onChange={(e) => setBeehiivAccountId(e.target.value)}
+                  className="w-full"
+                >
+                  <option value="">— Select account —</option>
+                  {beehiivAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </Select>
+                {beehiivAccounts.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    No accounts yet —{" "}
+                    <a href="/settings/beehiiv" className="underline">add one in Settings</a>.
+                  </p>
+                )}
               </FieldGroup>
               <FieldGroup>
-                <Label>Beehiiv Publication ID</Label>
+                <Label>Publication ID</Label>
                 <Input
                   value={beehiivPubId}
                   onChange={(e) => setBeehiivPubId(e.target.value)}

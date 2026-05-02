@@ -46,7 +46,6 @@ Avoid jargon unless it's industry-standard. Assume the reader manages complex pr
     min_score: 40,
     min_articles: 4,
     max_rewrite_loops: 1,
-    beehiiv_api_key: null,
     beehiiv_pub_id: null,
     send_hour: 7,
     subject_template: null,

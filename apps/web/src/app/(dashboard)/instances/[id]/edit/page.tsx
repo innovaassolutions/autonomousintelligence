@@ -10,11 +10,10 @@ export default async function EditInstancePage({
   const { id } = await params;
   const supabase = createServerClient();
 
-  const { data: instance, error } = await supabase
-    .from("newsletter_instances")
-    .select("*")
-    .eq("id", id)
-    .single();
+  const [{ data: instance, error }, { data: beehiivAccounts }] = await Promise.all([
+    supabase.from("newsletter_instances").select("*").eq("id", id).single(),
+    supabase.from("beehiiv_accounts").select("id, name").order("created_at", { ascending: true }),
+  ]);
 
   if (error || !instance) {
     notFound();
@@ -26,7 +25,7 @@ export default async function EditInstancePage({
         <h1 className="text-2xl font-bold text-gray-900">Edit instance</h1>
         <p className="text-gray-500 text-sm mt-1">{instance.name}</p>
       </div>
-      <InstanceForm instanceId={id} defaultValues={instance} />
+      <InstanceForm instanceId={id} defaultValues={instance} beehiivAccounts={beehiivAccounts ?? []} />
     </div>
   );
 }

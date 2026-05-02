@@ -21,7 +21,7 @@ export interface NewsletterInstance {
   min_score: number;
   min_articles: number;
   max_rewrite_loops: number;
-  beehiiv_api_key: string | null;
+  beehiiv_account_id: string | null;
   beehiiv_pub_id: string | null;
   send_hour: number;
   subject_template: string | null;
