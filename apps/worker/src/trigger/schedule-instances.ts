@@ -1,9 +1,6 @@
-import { schedules } from "@trigger.dev/sdk/v3";
+import { schedules, tasks } from "@trigger.dev/sdk/v3";
 import { Cron } from "croner";
 import { createClient } from "@supabase/supabase-js";
-import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
-import { buildPipelineGraph } from "../pipeline/graph.js";
-import { v4 as uuidv4 } from "uuid";
 
 export const scheduleInstances = schedules.task({
   id: "schedule-instances",
@@ -25,18 +22,7 @@ export const scheduleInstances = schedules.task({
       const nextRun = new Date(instance.next_run_at ?? 0);
       if (nextRun > now) continue;
 
-      const runId = uuidv4();
-      const threadId = `pipeline-${instance.id}-${runId}`;
-
-      await supabase.from("pipeline_runs").insert({
-        id: runId,
-        instance_id: instance.id,
-        status: "started",
-        current_stage: "research",
-        langgraph_thread_id: threadId,
-      });
-
-      // Advance next_run_at using croner
+      // Advance next_run_at using croner before triggering
       try {
         const cron = new Cron(instance.cron_schedule, { timezone: instance.timezone });
         await supabase
@@ -48,18 +34,9 @@ export const scheduleInstances = schedules.task({
         continue;
       }
 
-      // Build and invoke the LangGraph pipeline (fire and forget — state persisted via checkpointer)
-      const checkpointer = PostgresSaver.fromConnString(
-        process.env.SUPABASE_CONNECTION_STRING!
-      );
-      const graph = buildPipelineGraph(checkpointer);
-
-      graph
-        .invoke(
-          { instanceId: instance.id, runId, instance },
-          { configurable: { thread_id: threadId } }
-        )
-        .catch(console.error);
+      // Trigger run-instance as a proper child task so it runs to completion
+      await tasks.trigger("run-instance", { instanceId: instance.id });
+      console.log(`[schedule-instances] Triggered run-instance for: ${instance.id}`);
     }
   },
 });
