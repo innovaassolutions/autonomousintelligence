@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase";
+import { RunNowButton } from "./_components/run-now-button";
 
 export const revalidate = 0;
 
@@ -58,6 +59,7 @@ export default async function InstancesPage() {
                       ? <>Next run: {new Date(instance.next_run_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</>
                       : "Not scheduled"}
                   </div>
+                  <RunNowButton instanceId={instance.id} />
                   <Link
                     href={`/instances/${instance.id}/edit`}
                     className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
