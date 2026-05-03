@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "trigger dev",
     "deploy": "trigger deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.36.0",
@@ -29,8 +32,10 @@
   "devDependencies": {
     "@types/node": "^20",
     "@types/uuid": "^9",
+    "@vitest/coverage-v8": "^2.1.9",
     "dotenv": "^17.4.2",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.9"
   }
 }

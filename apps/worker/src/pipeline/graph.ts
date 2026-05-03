@@ -1,4 +1,4 @@
-import { StateGraph, END, START, interrupt } from "@langchain/langgraph";
+import { StateGraph, END, START } from "@langchain/langgraph";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { PipelineState } from "./state.js";
 import { exploreAgent } from "../agents/explore-agent.js";
@@ -36,7 +36,8 @@ export function buildPipelineGraph(checkpointer: PostgresSaver) {
     .addNode("editorial", editorialAgent)
     .addNode("assemble", assemblyAgent)
     .addNode("approval_gate", async (_state) => {
-      interrupt({ message: "Awaiting human approval" });
+      // Interruption is handled by interruptBefore at compile time — do NOT call
+      // interrupt() here as well, or resuming the graph will re-interrupt forever.
       return { status: "awaiting_approval" as const };
     })
     .addNode("deliver", deliveryAgent)

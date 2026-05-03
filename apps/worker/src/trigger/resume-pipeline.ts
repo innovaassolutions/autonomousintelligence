@@ -11,11 +11,14 @@ export const resumePipeline = task({
     const checkpointer = PostgresSaver.fromConnString(
       process.env.SUPABASE_CONNECTION_STRING!
     );
+    await checkpointer.setup();
     const graph = buildPipelineGraph(checkpointer);
 
-    // Resume the paused graph from the approval_gate node
+    // IMPORTANT: pass null to resume from the interrupt checkpoint.
+    // Passing a non-null state update would patch the checkpoint state but NOT
+    // re-trigger graph execution — the pipeline would silently stall.
     const result = await graph.invoke(
-      { approvalStatus: "approved" },
+      null,
       { configurable: { thread_id: threadId } }
     );
 

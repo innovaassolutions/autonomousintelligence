@@ -45,7 +45,8 @@ Return: { "approved": <true|false>, "feedback": "<specific issues to fix, or nul
 
   return {
     editorialFeedback: approved ? null : feedback,
-    rewriteCount: rewriteCount + (approved ? 0 : 1),
+    // rewriteCount is owned by writing-agent (incremented there on every write pass).
+    // Editorial must not double-count or the rewrite budget is exhausted twice as fast.
     status: "reviewing" as const,
   };
 }
